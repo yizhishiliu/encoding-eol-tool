@@ -1,14 +1,13 @@
-
 import os
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext
 import pyperclip
 import webbrowser
 
-# 导入加密后的核心模块（需使用 Cython 编译为 .pyd）
+# 加密后的核心逻辑模块（需用 Cython 编译为 .pyd）
 import core_logic
 
-# EOL 显示名称和真实值映射
+# 换行符显示与真实值映射
 EOL_OPTIONS = {
     "LF (\\n)": "\n",
     "CRLF (\\r\\n)": "\r\n",
@@ -26,38 +25,50 @@ def run_check(only_non_matching=False):
         messagebox.showerror("错误", "请选择有效的文件夹路径。")
         return
 
-    suffixes = [s.strip() for s in suffix_var.get().split(',') if s.strip()]
-    target_encoding = encoding_var.get()
-    target_eol = EOL_OPTIONS[eol_display_var.get()]
+    suffixes = [s.strip().lower() for s in suffix_var.get().split(',') if s.strip()]
+    target_encoding = encoding_var.get().lower()
+    target_eol_display = eol_display_var.get()
 
     result_text.delete(1.0, tk.END)
-    result_text.insert(tk.END, f"🔍 正在检查 {folder}...")
+    result_text.insert(tk.END, f"🔍 正在检查: {folder}\n\n")
 
     file_count = 0
     mismatch_count = 0
+
     for root, _, files in os.walk(folder):
         for file in files:
-            if suffixes and not any(file.lower().endswith(sfx.lower()) for sfx in suffixes):
+            if suffixes and not any(file.lower().endswith(sfx) for sfx in suffixes):
                 continue
 
             file_path = os.path.join(root, file)
             try:
                 enc, conf = core_logic.detect_encoding(file_path)
-                eol = core_logic.detect_eol(file_path, enc or 'utf-8')
+                eol = core_logic.detect_eol(file_path, enc or 'utf-8')  # 返回显示名
+
                 file_count += 1
 
-                mismatch = (enc.lower() != target_encoding.lower()) or (eol != eol_display_var.get())
+                encoding_match = enc.lower() == target_encoding
+                eol_match = eol == target_eol_display
+                mismatch = not (encoding_match and eol_match)
+
                 if only_non_matching and not mismatch:
                     continue
 
-                result_text.insert(tk.END, f"{file_path} 编码: {enc}（置信度 {conf:.2f}）换行符: {eol}")
+                status = "❌" if mismatch else "✅"
+                result_text.insert(tk.END,
+                    f"{status} {file_path}\n"
+                    f"  编码: {enc}（置信度 {conf:.2f}）\n"
+                    f"  换行符: {eol}\n\n"
+                )
+
                 if mismatch:
                     mismatch_count += 1
 
             except Exception as e:
-                result_text.insert(tk.END, f"[错误] {file_path} -> {e}")
+                result_text.insert(tk.END, f"[错误] {file_path} -> {e}\n\n")
 
-    result_text.insert(tk.END, f"✅ 共检查文件：{file_count} 个，不符合条件：{mismatch_count} 个")
+    result_text.insert(tk.END, f"📊 总文件数：{file_count} 个\n")
+    result_text.insert(tk.END, f"🚫 不符合条件文件数：{mismatch_count} 个\n")
 
 def convert_all():
     folder = folder_var.get()
@@ -65,7 +76,7 @@ def convert_all():
         messagebox.showerror("错误", "请选择有效的文件夹路径。")
         return
 
-    suffixes = [s.strip() for s in suffix_var.get().split(',') if s.strip()]
+    suffixes = [s.strip().lower() for s in suffix_var.get().split(',') if s.strip()]
     target_encoding = encoding_var.get()
     target_eol = EOL_OPTIONS[eol_display_var.get()]
 
@@ -74,7 +85,7 @@ def convert_all():
 
     for root, _, files in os.walk(folder):
         for file in files:
-            if suffixes and not any(file.lower().endswith(sfx.lower()) for sfx in suffixes):
+            if suffixes and not any(file.lower().endswith(sfx) for sfx in suffixes):
                 continue
 
             file_path = os.path.join(root, file)
@@ -84,11 +95,11 @@ def convert_all():
             else:
                 failed.append((file_path, err))
 
-    result_text.insert(tk.END, f"🔧 转换完成：{converted} 个文件")
+    result_text.insert(tk.END, f"\n🔧 转换完成：{converted} 个文件\n")
     if failed:
-        result_text.insert(tk.END, f"❌ 转换失败 {len(failed)} 个文件:")
+        result_text.insert(tk.END, f"❌ 转换失败 {len(failed)} 个文件:\n")
         for f, e in failed:
-            result_text.insert(tk.END, f"{f} 错误: {e}")
+            result_text.insert(tk.END, f"{f} 错误: {e}\n")
 
 def copy_results():
     content = result_text.get(1.0, tk.END)
@@ -133,6 +144,7 @@ if __name__ == '__main__':
     tk.Button(button_frame, text="⚠️ 仅显示不符合", command=lambda: run_check(True), width=20).grid(row=0, column=1, padx=10)
     tk.Button(button_frame, text="🔧 转换文件", command=convert_all, width=20).grid(row=0, column=2, padx=10)
     tk.Button(button_frame, text="📋 复制结果", command=copy_results, width=20).grid(row=0, column=3, padx=10)
+    tk.Button(button_frame, text="🧹 清空结果", command=lambda: result_text.delete(1.0, tk.END), width=20).grid(row=0, column=4, padx=10)
 
     result_text = scrolledtext.ScrolledText(window, wrap=tk.WORD, font=("Consolas", 10))
     result_text.pack(expand=True, fill='both', padx=10, pady=10)
