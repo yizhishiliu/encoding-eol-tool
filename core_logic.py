@@ -6,7 +6,13 @@ def detect_encoding(file_path, sample_size=10000):
     result = chardet.detect(raw_data)
     return result['encoding'], result['confidence']
 
-def detect_eol(file_path):
+def detect_eol(file_path, encoding='utf-8'):
+    """
+    检测文件的换行符类型
+    :param file_path: 文件路径
+    :param encoding: 文件编码，默认为utf-8，仅用于日志记录，不影响检测逻辑
+    :return: 换行符类型的显示名称
+    """
     with open(file_path, 'rb') as f:
         data = f.read()
 
