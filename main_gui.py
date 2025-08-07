@@ -149,7 +149,7 @@ if __name__ == '__main__':
     result_text = scrolledtext.ScrolledText(window, wrap=tk.WORD, font=("Consolas", 10))
     result_text.pack(expand=True, fill='both', padx=10, pady=10)
 
-    link = tk.Label(window, text="G© 2025 十六", fg="blue", cursor="hand2")
+    link = tk.Label(window, text="© 2025 十六", fg="blue", cursor="hand2")
     link.pack(pady=5)
     link.bind("<Button-1>", lambda e: open_github())
 
